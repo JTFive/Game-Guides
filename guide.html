@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎮%3C/text%3E%3C/svg%3E">
+</head>
+<body data-page="guide">
+  <div id="site-header"></div>
+  <main id="main">
+    <div class="wrap" style="padding-top:28px">
+      <div class="crumbs"><a href="./#games">Games</a> / <a id="crumb-game"></a> / <a id="crumb-type"></a></div>
+      <span class="badge" id="g-badge"></span>
+      <h1 id="g-title" style="margin-top:8px">&nbsp;</h1>
+
+      <div class="guide-layout">
+        <div>
+          <div class="video" id="video"></div>
+          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+            <a id="yt-link" class="btn yt small hidden" target="_blank" rel="noopener">Watch on YouTube ↗</a>
+          </div>
+          <div class="panel" id="notes-panel" style="margin-top:16px">
+            <h3>Notes</h3>
+            <div class="notes" id="notes"></div>
+          </div>
+          <div class="prevnext" id="prevnext"></div>
+        </div>
+        <aside>
+          <div class="panel">
+            <h3>Details</h3>
+            <dl class="kv" id="details"></dl>
+          </div>
+          <div class="panel" id="map-panel">
+            <h3 style="display:flex;justify-content:space-between;align-items:baseline">Location <a id="full-map" style="font:500 13px var(--body)">Full map →</a></h3>
+            <div class="mini-map" id="mini-map"></div>
+            <div class="muted" id="map-name" style="font-size:13px;margin-top:8px"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+  <div id="site-footer"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

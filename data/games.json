@@ -1,0 +1,25 @@
+{
+  "guideTypes": ["Main Quest", "Side Quest", "Mission", "Task", "Boss", "Location", "Collectible", "Beginner Tips"],
+  "games": [
+    {
+      "id": "mw4-dmz",
+      "name": "MW4 DMZ",
+      "tagline": "Call of Duty: Modern Warfare 4's extraction mode — missions, operations, bosses and keys across the Hajin Exclusion Zone.",
+      "cover": "images/mw4-dmz.svg",
+      "accent": "#d9a441",
+      "guideTypes": [
+        "Story Mission",
+        "DMZ Order",
+        "Dynamic Operation",
+        "Side Operation",
+        "Lieutenant",
+        "Commander Boss",
+        "Key & Locked Room",
+        "Location",
+        "Exfil",
+        "Beginner Tips"
+      ],
+      "maps": []
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <meta name="description" content="Video game guides — quests, missions, bosses and locations, organized by game.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎮%3C/text%3E%3C/svg%3E">
+</head>
+<body data-page="home">
+  <div id="site-header"></div>
+  <main id="main">
+    <section class="hero wrap">
+      <h1 id="hero-title">&nbsp;</h1>
+      <p id="hero-tagline"></p>
+      <div class="actions">
+        <input id="search" class="search" type="search" placeholder="Search guides — quest name, boss, location…" aria-label="Search guides">
+        <a id="subscribe" class="btn yt hidden" target="_blank" rel="noopener">▶ Subscribe on YouTube</a>
+        <a id="kofi" class="btn kofi hidden" target="_blank" rel="noopener">♥ Support on Ko-fi</a>
+      </div>
+    </section>
+
+    <section class="section wrap" id="games">
+      <div class="section-head"><h2>Games</h2></div>
+      <div class="game-grid" id="game-grid"></div>
+    </section>
+
+    <section class="section wrap" id="latest">
+      <div class="section-head"><h2 id="latest-title">Latest guides</h2></div>
+      <div class="guide-grid" id="latest-grid"></div>
+    </section>
+  </main>
+  <div id="site-footer"></div>
+  <script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Guide Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    .ed-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; margin-top: 20px; align-items: start; }
+    .pick-map { height: 300px; border-radius: 10px; overflow: hidden; background: var(--bg-2); cursor: crosshair; }
+    .yt-prev { display: flex; gap: 10px; align-items: center; font-size: 13px; margin-top: 6px; }
+    .yt-prev img { width: 120px; border-radius: 6px; }
+    .list-box { max-height: 360px; overflow: auto; margin: 0 -6px; }
+    .warn { background: color-mix(in srgb, #f2c25e 15%, transparent); color: #f2d28e; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 12px; }
+    .err { background: color-mix(in srgb, var(--danger) 15%, transparent); color: #ffb3a8; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin: 10px 0; }
+    .ok { color: #7ee2a8; }
+    .bad { color: var(--danger); }
+    .toolbar .field { flex: 1 1 220px; max-width: 320px; }
+    .acct { display: flex; align-items: center; gap: 10px; margin-left: auto; align-self: end; flex-wrap: wrap; }
+    .acct img { width: 32px; height: 32px; border-radius: 50%; }
+    .role { font: 700 11px var(--body); text-transform: uppercase; letter-spacing: .06em; padding: 3px 8px; border-radius: 6px; background: color-mix(in srgb, #7ee2a8 18%, transparent); color: #7ee2a8; }
+    .changes { list-style: none; padding: 0; margin: 0 0 12px; font-size: 14px; }
+    .changes li { padding: 4px 0; }
+    .changes .k { font: 700 11px var(--body); text-transform: uppercase; letter-spacing: .05em; margin-right: 6px; }
+    .k.add { color: #7ee2a8; } .k.edit { color: var(--accent); } .k.del { color: var(--danger); }
+    details summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+    dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; padding: 0; width: min(560px, calc(100% - 32px)); max-height: calc(100vh - 40px); }
+    dialog::backdrop { background: rgba(0,0,0,.6); }
+    .dlg { padding: 20px; }
+    .dlg h2 { margin-bottom: 6px; }
+    .seg { display: flex; gap: 4px; background: var(--bg-2); border-radius: 10px; padding: 4px; margin: 14px 0; }
+    .seg button { flex: 1; background: none; border: 0; color: var(--muted); font: 600 14px var(--body); padding: 8px; border-radius: 8px; cursor: pointer; }
+    .seg button.on { background: var(--panel-2); color: var(--text); }
+    .how { font-size: 14px; color: var(--muted); padding-left: 20px; margin: 0 0 14px; }
+    .how li { margin-bottom: 6px; }
+    .how b { color: var(--text); }
+    .check { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); margin-bottom: 14px; }
+    .busy { opacity: .6; pointer-events: none; }
+    @media (max-width: 900px) { .ed-grid { grid-template-columns: minmax(0, 1fr); } }
+  </style>
+</head>
+<body data-page="editor">
+  <div id="site-header"></div>
+  <main id="main" class="wrap" style="padding-top:28px">
+    <h1>Guide Editor</h1>
+    <p class="muted" style="max-width:720px;margin-top:0" id="intro">Sign in to add, edit and save guides directly to the site. Only you and the moderators you add on GitHub can save.</p>
+
+    <div class="toolbar" style="margin-top:18px">
+      <div class="field" style="margin:0">
+        <label for="game">Game</label>
+        <select id="game"></select>
+      </div>
+      <span id="draft-state" class="muted" style="font-size:13px;align-self:end;padding-bottom:10px"></span>
+      <div class="acct" id="acct"></div>
+    </div>
+
+    <div class="ed-grid">
+      <!-- FORM -->
+      <section class="panel">
+        <h3 id="form-title">New guide</h3>
+        <div class="field">
+          <label for="f-title">Mission / quest / task name *</label>
+          <input id="f-title" placeholder="e.g. Main Quest 3: The Broken Bridge">
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f-type">Guide type</label>
+            <select id="f-type"></select>
+          </div>
+          <div class="field" id="custom-type-wrap" style="display:none">
+            <label for="f-type-custom">New type name</label>
+            <input id="f-type-custom" placeholder="e.g. Dungeon">
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-video">YouTube link</label>
+          <input id="f-video" placeholder="https://youtu.be/…  or  https://www.youtube.com/watch?v=…">
+          <div class="yt-prev" id="yt-prev"></div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f-location">Location name</label>
+            <input id="f-location" placeholder="e.g. Northern Peaks">
+          </div>
+          <div class="field">
+            <label for="f-order">Order # <span style="font-weight:400">(optional, for story order)</span></label>
+            <input id="f-order" type="number" min="0" step="1" placeholder="e.g. 3">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="f-date">Date posted</label>
+            <input id="f-date" type="date">
+          </div>
+          <div class="field">
+            <label for="f-map">Map</label>
+            <select id="f-map"></select>
+          </div>
+        </div>
+        <div id="pin-wrap">
+          <div class="field" style="margin-bottom:6px">
+            <label>Map pin — click the map to place it</label>
+          </div>
+          <div class="pick-map" id="pick-map"></div>
+          <div style="display:flex;gap:10px;align-items:center;margin:8px 0 12px;font-size:13px">
+            <span id="pin-text" class="muted">No pin</span>
+            <button class="btn small" id="pin-clear" type="button">Remove pin</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-notes">Notes <span style="font-weight:400">(optional — each new line becomes its own paragraph)</span></label>
+          <textarea id="f-notes" placeholder="Tips, requirements, rewards, timestamps…"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn primary" id="save" type="button">Add to list</button>
+          <button class="btn" id="new" type="button">Clear form</button>
+          <span id="form-msg" style="align-self:center;font-size:13px"></span>
+        </div>
+      </section>
+
+      <!-- LIST + PUBLISH -->
+      <section>
+        <div class="panel">
+          <h3 style="display:flex;justify-content:space-between;align-items:baseline">Guides in this game <span class="muted" id="list-count" style="font:500 13px var(--body)"></span></h3>
+          <div class="list-box" id="list"></div>
+        </div>
+
+        <div class="panel" id="publish">
+          <h3>Publish to the site</h3>
+          <div id="pending-none" class="muted" style="font-size:14px">No unsaved changes. Add or edit guides, then save them here.</div>
+          <div id="pending" class="hidden">
+            <ul class="changes" id="changes"></ul>
+            <div id="gh-actions" style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn primary" id="publish-btn" type="button">Save to site</button>
+              <button class="btn small danger" id="discard" type="button">Discard changes</button>
+            </div>
+            <div id="signin-hint" class="warn hidden" style="margin-top:12px">Sign in to save directly, or publish manually below.</div>
+          </div>
+          <div id="publish-msg"></div>
+
+          <details id="manual" style="margin-top:14px">
+            <summary>Publish manually (without signing in)</summary>
+            <div style="margin-top:12px">
+              <div id="repo-warn" class="warn hidden">Couldn't work out which GitHub repo this site is in. Set <b>"repo"</b> in <code>data/site.json</code> to <code>username/repo-name</code>.</div>
+              <ol class="steps">
+                <li>Click <b>Copy file</b>.</li>
+                <li>Click <b>Open file on GitHub</b> (sign in if asked).</li>
+                <li>Select everything in GitHub's editor, paste, then click <b>Commit changes</b>.</li>
+              </ol>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
+                <button class="btn small" id="copy" type="button">Copy file</button>
+                <a class="btn small" id="gh-link" target="_blank" rel="noopener">Open file on GitHub ↗</a>
+                <button class="btn small" id="download" type="button">Download file</button>
+              </div>
+              <div class="muted" style="font-size:13px;margin-bottom:6px">File: <code id="file-path"></code></div>
+              <textarea class="code-out" id="out" readonly spellcheck="false"></textarea>
+            </div>
+          </details>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="signin">
+    <div class="dlg">
+      <h2>Sign in with GitHub</h2>
+      <p class="muted" style="margin:0;font-size:14px">The editor uses a GitHub access token to save for you. You create it once on GitHub and paste it here.</p>
+      <div class="seg" id="who">
+        <button class="on" data-who="owner" type="button">I own the site</button>
+        <button data-who="mod" type="button">I'm a moderator</button>
+      </div>
+      <ol class="how" id="how-owner">
+        <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub → new fine-grained token ↗</a>.</li>
+        <li>Name it <b>Guide editor</b> and pick an expiration (e.g. 1 year).</li>
+        <li>Under <b>Repository access</b> choose <b>Only select repositories</b> → pick <b id="repo-name-1">this site's repo</b>.</li>
+        <li>Under <b>Permissions → Repository permissions</b>, set <b>Contents</b> to <b>Read and write</b>.</li>
+        <li>Click <b>Generate token</b>, copy it and paste it below.</li>
+      </ol>
+      <ol class="how hidden" id="how-mod">
+        <li>Make sure the site owner has added you, and that you've <b>accepted the invitation</b> (check your email or <a href="https://github.com/notifications" target="_blank" rel="noopener">GitHub notifications ↗</a>).</li>
+        <li>Open <a id="classic-link" target="_blank" rel="noopener">GitHub → new token (pre-filled) ↗</a>.</li>
+        <li>Pick an expiration, leave the <b>public_repo</b> box ticked, and click <b>Generate token</b>.</li>
+        <li>Copy the token and paste it below.</li>
+      </ol>
+      <div class="field">
+        <label for="tok">Access token</label>
+        <input id="tok" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_… or ghp_…">
+      </div>
+      <label class="check"><input type="checkbox" id="remember" checked> Keep me signed in on this device (untick on shared computers)</label>
+      <div id="signin-err"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn" id="signin-cancel" type="button">Cancel</button>
+        <button class="btn primary" id="signin-go" type="button">Sign in</button>
+      </div>
+      <p class="muted" style="font-size:12px;margin:14px 0 0">Your token is only stored in this browser and only sent to GitHub. Treat it like a password.</p>
+    </div>
+  </dialog>
+
+  <div id="site-footer"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+  (async () => {
+    const $ = id => document.getElementById(id);
+    const site = await Hub.chrome();
+    const today = () => new Date().toISOString().slice(0, 10);
+
+    const store = {
+      get(k) { try { return JSON.parse(localStorage.getItem(k) ?? sessionStorage.getItem(k)); } catch { return null; } },
+      set(k, v, session) {
+        try { (session ? sessionStorage : localStorage).setItem(k, JSON.stringify(v)); (session ? localStorage : sessionStorage).removeItem(k); } catch {}
+      },
+      del(k) { try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch {} },
+    };
+    function toast(msg) {
+      const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+      document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
+    }
+
+    /* ---------- which repo is this site in? ---------- */
+    function detectRepo() {
+      if (site.repo && !/your-github-username|your-repo-name/.test(site.repo)) return site.repo;
+      const h = location.hostname;
+      if (h.endsWith(".github.io")) {
+        const user = h.slice(0, -".github.io".length);
+        const seg = location.pathname.split("/").filter(Boolean)[0];
+        return seg && !seg.endsWith(".html") ? `${user}/${seg}` : `${user}/${h}`;
+      }
+      return null;
+    }
+    const REPO = detectRepo();
+    const BRANCH = site.branch || "main";
+
+    /* ---------- GitHub API ---------- */
+    const GH = {
+      token: null, user: null, role: null,
+      async api(path, opts = {}) {
+        const r = await fetch("https://api.github.com" + path, {
+          ...opts, cache: "no-store",
+          headers: { Accept: "application/vnd.github+json", Authorization: "Bearer " + this.token, "X-GitHub-Api-Version": "2022-11-28", ...(opts.body ? { "Content-Type": "application/json" } : {}) },
+        });
+        let data = null; try { data = await r.json(); } catch {}
+        if (!r.ok) { const e = new Error(data?.message || "GitHub error " + r.status); e.status = r.status; throw e; }
+        return data;
+      },
+      enc(s) { const b = new TextEncoder().encode(s); let bin = ""; for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode(...b.subarray(i, i + 0x8000)); return btoa(bin); },
+      dec(c) { const bin = atob(c.replace(/\s/g, "")); return new TextDecoder().decode(Uint8Array.from(bin, ch => ch.charCodeAt(0))); },
+      p(path) { return path.split("/").map(encodeURIComponent).join("/"); },
+      async getFile(path) {
+        try {
+          const d = await this.api(`/repos/${REPO}/contents/${this.p(path)}?ref=${encodeURIComponent(BRANCH)}`);
+          return { text: this.dec(d.content), sha: d.sha };
+        } catch (e) { if (e.status === 404) return { text: null, sha: null }; throw e; }
+      },
+      async putFile(path, text, sha, message) {
+        const body = { message, content: this.enc(text), branch: BRANCH };
+        if (sha) body.sha = sha;
+        const d = await this.api(`/repos/${REPO}/contents/${this.p(path)}`, { method: "PUT", body: JSON.stringify(body) });
+        return d.content.sha;
+      },
+      async signIn(token) {
+        this.token = token;
+        const user = await this.api("/user");
+        let repo;
+        try { repo = await this.api(`/repos/${REPO}`); }
+        catch (e) {
+          if (e.status === 404) throw new Error(`This token can't see ${REPO}. If you're the owner, make sure the token includes this repository. If you're a moderator, accept the owner's invitation first.`);
+          throw e;
+        }
+        if (!repo.permissions?.push) throw new Error(`@${user.login} doesn't have edit access to this site. Ask the owner to add you as a collaborator on ${REPO}.`);
+        this.user = user; this.role = repo.permissions.admin ? "Owner" : "Moderator";
+      },
+      signOut() { this.token = this.user = this.role = null; },
+    };
+    const TOKEN_KEY = "hub-gh-token-" + REPO;
+
+    /* ---------- state ---------- */
+    let games = [], baseTypes = [];
+    let game, base = [], baseSha = null, published = "[]", ops = [], guides = [];
+    let editingId = null, pin = null, map = null, marker = null, busy = false;
+    const opsKey = () => `hub-editor-ops-${REPO}-${game.id}`;
+    const guidesPath = () => `data/guides/${game.id}.json`;
+    const fileText = list => JSON.stringify(list, null, 2) + "\n";
+
+    // Edits are kept as a list of operations. If someone else saves first,
+    // we reload their version and re-apply yours on top, so nobody's work is lost.
+    function replay(list, operations) {
+      let out = list.map(g => ({ ...g }));
+      for (const op of operations) {
+        if (op.op === "upsert") {
+          const i = out.findIndex(g => g.id === op.entry.id);
+          if (i >= 0) out[i] = op.entry; else out.push(op.entry);
+        } else if (op.op === "delete") out = out.filter(g => g.id !== op.id);
+      }
+      return out;
+    }
+    function diff() {
+      const b = new Map(base.map(g => [g.id, g])), n = new Map(guides.map(g => [g.id, g]));
+      const out = [];
+      for (const g of guides) {
+        if (!b.has(g.id)) out.push({ k: "add", title: g.title });
+        else if (JSON.stringify(b.get(g.id)) !== JSON.stringify(g)) out.push({ k: "edit", title: g.title });
+      }
+      for (const g of base) if (!n.has(g.id)) out.push({ k: "del", title: g.title });
+      return out;
+    }
+    function commitMessage(changes) {
+      const verb = { add: "Add", edit: "Update", del: "Remove" };
+      const head = changes.length === 1 ? `${verb[changes[0].k]} guide: ${changes[0].title} (${game.name})` : `${game.name}: ${changes.length} guide changes`;
+      const body = changes.length > 1 ? "\n\n" + changes.map(c => `- ${verb[c.k]}: ${c.title}`).join("\n") : "";
+      return `${head}${body}\n\nSaved from the site editor by @${GH.user.login}`;
+    }
+
+    /* ---------- account UI ---------- */
+    function renderAccount() {
+      const signedIn = !!GH.user;
+      $("acct").innerHTML = signedIn
+        ? `${GH.user.avatar_url ? `<img src="${Hub.esc(GH.user.avatar_url)}" alt="" onerror="this.remove()">` : ""}<span>@${Hub.esc(GH.user.login)}</span><span class="role">${GH.role}</span><button class="btn small" id="signout" type="button">Sign out</button>`
+        : REPO ? `<button class="btn primary small" id="open-signin" type="button">Sign in to save</button>` : "";
+      $("intro").textContent = signedIn
+        ? `Signed in — changes you save here go live on the site in about a minute.`
+        : `Sign in to add, edit and save guides directly to the site. Only you and the moderators you add on GitHub can save.`;
+      $("open-signin")?.addEventListener("click", openSignin);
+      $("signout")?.addEventListener("click", async () => {
+        if (!confirm("Sign out of the editor on this device?")) return;
+        GH.signOut(); store.del(TOKEN_KEY); renderAccount(); await loadGame();
+      });
+      renderPublish();
+    }
+
+    function openSignin() {
+      $("signin-err").innerHTML = ""; $("tok").value = "";
+      $("repo-name-1").textContent = REPO || "this site's repo";
+      $("classic-link").href = "https://github.com/settings/tokens/new?scopes=public_repo&description=" + encodeURIComponent("Guide editor – " + REPO);
+      $("signin").showModal(); setTimeout(() => $("tok").focus(), 50);
+    }
+    $("who").addEventListener("click", e => {
+      const b = e.target.closest("[data-who]"); if (!b) return;
+      $("who").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      $("how-owner").classList.toggle("hidden", b.dataset.who !== "owner");
+      $("how-mod").classList.toggle("hidden", b.dataset.who !== "mod");
+    });
+    $("signin-cancel").addEventListener("click", () => $("signin").close());
+    $("tok").addEventListener("keydown", e => { if (e.key === "Enter") $("signin-go").click(); });
+    $("signin-go").addEventListener("click", async () => {
+      const t = $("tok").value.trim();
+      if (!t) { $("signin-err").innerHTML = `<div class="err">Paste your token first.</div>`; return; }
+      $("signin-go").classList.add("busy"); $("signin-err").innerHTML = "";
+      try {
+        await GH.signIn(t);
+        store.set(TOKEN_KEY, t, !$("remember").checked);
+        $("signin").close(); renderAccount(); toast(`Signed in as @${GH.user.login}`);
+        await loadGame();
+      } catch (err) {
+        GH.signOut();
+        const msg = err.status === 401 ? "GitHub didn't accept that token. Check you copied all of it and that it hasn't expired." : err.message;
+        $("signin-err").innerHTML = `<div class="err">${Hub.esc(msg)}</div>`;
+      } finally { $("signin-go").classList.remove("busy"); }
+    });
+
+    /* ---------- list, output, publish panel ---------- */
+    const gameTypes = () => (game && game.guideTypes) || baseTypes;
+    function typeOptions(selected) {
+      const used = guides.map(g => g.type).filter(Boolean);
+      const all = [...new Set([...gameTypes(), ...used])];
+      $("f-type").innerHTML = all.map(t => `<option ${t === selected ? "selected" : ""}>${Hub.esc(t)}</option>`).join("") + `<option value="__new">+ New type…</option>`;
+      $("custom-type-wrap").style.display = "none";
+    }
+    $("f-type").addEventListener("change", () => {
+      const isNew = $("f-type").value === "__new";
+      $("custom-type-wrap").style.display = isNew ? "" : "none";
+      if (isNew) $("f-type-custom").focus();
+    });
+
+    function renderPublish() {
+      if (!game) return;
+      const changes = diff();
+      const has = changes.length > 0;
+      $("pending").classList.toggle("hidden", !has);
+      $("pending-none").classList.toggle("hidden", has);
+      $("changes").innerHTML = changes.map(c => `<li><span class="k ${c.k}">${{ add: "Added", edit: "Edited", del: "Deleted" }[c.k]}</span>${Hub.esc(c.title)}</li>`).join("");
+      const signedIn = !!GH.user;
+      $("publish-btn").classList.toggle("hidden", !signedIn);
+      $("signin-hint").classList.toggle("hidden", signedIn);
+      $("publish-btn").textContent = `Save ${changes.length} change${changes.length === 1 ? "" : "s"} to site`;
+      $("draft-state").innerHTML = has ? `<span class="bad">● ${changes.length} unsaved change${changes.length === 1 ? "" : "s"}</span>` : `<span class="ok">● Up to date</span>`;
+    }
+
+    function sync() {
+      $("out").value = fileText(guides);
+      $("list-count").textContent = guides.length + " total";
+      if (ops.length && fileText(guides) !== published) store.set(opsKey(), ops); else { ops = []; store.del(opsKey()); }
+      renderList(); renderPublish();
+    }
+
+    function renderList() {
+      if (!guides.length) { $("list").innerHTML = `<div class="muted" style="padding:10px">No guides yet. Fill in the form to add the first one.</div>`; return; }
+      $("list").innerHTML = Hub.sortGuides(guides, "order").map(g => `
+        <div class="list-row ${g.id === editingId ? "editing" : ""}">
+          <span class="badge">${Hub.esc(g.type || "Guide")}</span>
+          <span class="t" title="${Hub.esc(g.title)}">${g.order != null ? "#" + Hub.esc(g.order) + " · " : ""}${Hub.esc(g.title)}${Hub.ytId(g.video) ? "" : ' <span class="muted">(no video)</span>'}</span>
+          <button class="btn small" data-edit="${Hub.esc(g.id)}">Edit</button>
+          <button class="btn small danger" data-del="${Hub.esc(g.id)}" title="Delete">✕</button>
+        </div>`).join("");
+    }
+    $("list").addEventListener("click", e => {
+      const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]");
+      if (ed) loadIntoForm(guides.find(g => g.id === ed.dataset.edit));
+      if (del) {
+        const g = guides.find(x => x.id === del.dataset.del);
+        if (g && confirm(`Delete “${g.title}”?`)) {
+          ops.push({ op: "delete", id: g.id });
+          guides = replay(base, ops);
+          if (editingId === g.id) clearForm();
+          sync(); toast("Deleted — remember to save");
+        }
+      }
+    });
+
+    $("publish-btn").addEventListener("click", publish);
+    async function publish() {
+      if (busy || !GH.user) return;
+      const changes = diff(); if (!changes.length) return;
+      busy = true; $("publish-btn").classList.add("busy"); $("publish-btn").textContent = "Saving…"; $("publish-msg").innerHTML = "";
+      try {
+        for (let attempt = 0; ; attempt++) {
+          try {
+            baseSha = await GH.putFile(guidesPath(), fileText(guides), baseSha, commitMessage(changes));
+            break;
+          } catch (err) {
+            // 409/422 = someone else saved since we loaded. Reload theirs and re-apply ours.
+            if ((err.status === 409 || err.status === 422) && attempt < 2) {
+              const f = await GH.getFile(guidesPath());
+              base = f.text ? JSON.parse(f.text) : []; baseSha = f.sha;
+              guides = replay(base, ops);
+              continue;
+            }
+            throw err;
+          }
+        }
+        base = guides.map(g => ({ ...g })); published = fileText(base); ops = []; store.del(opsKey());
+        sync();
+        $("publish-msg").innerHTML = `<div class="ok" style="margin-top:12px;font-size:14px">✓ Saved. The site updates in about a minute.</div>`;
+        toast("Saved to the site");
+      } catch (err) {
+        const msg = err.status === 401 ? "Your sign-in has expired. Sign out, create a new token and sign in again."
+          : err.status === 403 || err.status === 404 ? "GitHub refused the save — this account or token doesn't have write access. Owners: check the token has Contents → Read and write."
+          : err.message;
+        $("publish-msg").innerHTML = `<div class="err">${Hub.esc(msg)} Your changes are still here and haven't been lost.</div>`;
+      } finally { busy = false; $("publish-btn").classList.remove("busy"); renderPublish(); }
+    }
+
+    $("discard").addEventListener("click", () => {
+      if (!confirm("Throw away your unsaved changes for this game?")) return;
+      ops = []; guides = base.map(g => ({ ...g })); clearForm(); sync();
+    });
+
+    /* ---------- video preview ---------- */
+    function videoPreview() {
+      const v = $("f-video").value.trim(), id = Hub.ytId(v);
+      $("yt-prev").innerHTML = !v ? "" : id
+        ? `<img src="https://i.ytimg.com/vi/${id}/mqdefault.jpg" alt=""><span class="ok">✓ Video found (${id})</span>`
+        : `<span class="bad">That doesn't look like a YouTube link.</span>`;
+    }
+    $("f-video").addEventListener("input", videoPreview);
+
+    /* ---------- map picker ---------- */
+    async function setupMap() {
+      const maps = game.maps || [];
+      $("f-map").innerHTML = maps.length ? maps.map(m => `<option value="${Hub.esc(m.id)}">${Hub.esc(m.name)}</option>`).join("") : `<option value="">(no maps for this game)</option>`;
+      $("pin-wrap").classList.toggle("hidden", !maps.length);
+    }
+    async function drawPickMap() {
+      if (map) { map.remove(); map = null; marker = null; }
+      const def = (game.maps || []).find(m => m.id === $("f-map").value);
+      const box = $("pick-map"); box.innerHTML = "";
+      if (!def) return;
+      try { map = await Hub.makeMap(box, def); } catch (err) { Hub.showError(box, err); return; }
+      guides.filter(g => g.pin && g.id !== editingId && (g.map || game.maps[0].id) === def.id).forEach(g =>
+        L.circleMarker(Hub.toLatLng(g.pin), { radius: 5, color: "#93a1b1", weight: 1, fillOpacity: .5 }).bindTooltip(g.title).addTo(map));
+      map.on("click", e => { pin = Hub.fromLatLng(e.latlng); placeMarker(); });
+      placeMarker();
+    }
+    function placeMarker() {
+      if (marker) { marker.remove(); marker = null; }
+      $("pin-text").textContent = pin ? `Pin at x ${pin[0]}, y ${pin[1]}` : "No pin";
+      if (pin && map) marker = L.marker(Hub.toLatLng(pin), { icon: Hub.pinIcon($("f-type").value) }).addTo(map);
+    }
+    $("f-map").addEventListener("change", drawPickMap);
+    $("pin-clear").addEventListener("click", () => { pin = null; placeMarker(); });
+
+    /* ---------- form ---------- */
+    function clearForm() {
+      editingId = null; pin = null;
+      ["f-title", "f-video", "f-location", "f-order", "f-notes", "f-type-custom"].forEach(id => $(id).value = "");
+      $("f-date").value = today();
+      typeOptions(gameTypes()[0]);
+      if ((game.maps || []).length) $("f-map").value = game.maps[0].id;
+      $("form-title").textContent = "New guide";
+      $("save").textContent = "Add to list";
+      $("form-msg").textContent = "";
+      videoPreview(); drawPickMap(); renderList();
+    }
+    function loadIntoForm(g) {
+      editingId = g.id; pin = g.pin ? [...g.pin] : null;
+      $("f-title").value = g.title || "";
+      $("f-video").value = g.video || "";
+      $("f-location").value = g.location || "";
+      $("f-order").value = g.order ?? "";
+      $("f-date").value = g.date || "";
+      $("f-notes").value = g.notes || "";
+      typeOptions(g.type);
+      if (g.map && (game.maps || []).some(m => m.id === g.map)) $("f-map").value = g.map;
+      $("form-title").textContent = "Editing guide";
+      $("save").textContent = "Update in list";
+      $("form-msg").textContent = "";
+      videoPreview(); drawPickMap(); renderList();
+      window.scrollTo({ top: $("form-title").getBoundingClientRect().top + scrollY - 80, behavior: "smooth" });
+    }
+    $("new").addEventListener("click", clearForm);
+
+    $("save").addEventListener("click", () => {
+      const title = $("f-title").value.trim();
+      if (!title) { $("form-msg").innerHTML = `<span class="bad">Give it a name first.</span>`; $("f-title").focus(); return; }
+      let type = $("f-type").value;
+      if (type === "__new") {
+        type = $("f-type-custom").value.trim();
+        if (!type) { $("form-msg").innerHTML = `<span class="bad">Type a name for the new guide type.</span>`; return; }
+      }
+      const video = $("f-video").value.trim();
+      if (video && !Hub.ytId(video)) { $("form-msg").innerHTML = `<span class="bad">Check the YouTube link.</span>`; return; }
+
+      const entry = { id: editingId, title, type };
+      if (!entry.id) {
+        let b = Hub.slug(title) || "guide", id = b, n = 2;
+        while (guides.some(g => g.id === id)) id = `${b}-${n++}`;
+        entry.id = id;
+      }
+      entry.video = video;
+      if ($("f-date").value) entry.date = $("f-date").value;
+      const order = $("f-order").value.trim();
+      if (order !== "") entry.order = Number(order);
+      const loc = $("f-location").value.trim(); if (loc) entry.location = loc;
+      if (pin && $("f-map").value) { entry.map = $("f-map").value; entry.pin = pin; }
+      const notes = $("f-notes").value.trim(); if (notes) entry.notes = notes;
+
+      const wasEditing = !!editingId;
+      ops.push({ op: "upsert", entry });
+      guides = replay(base, ops);
+      sync(); clearForm();
+      toast(wasEditing ? "Updated — remember to save" : "Added — remember to save");
+    });
+
+    /* ---------- manual publishing fallback ---------- */
+    $("copy").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(fileText(guides)); }
+      catch { $("out").select(); document.execCommand("copy"); }
+      toast("Copied — now paste it into GitHub");
+    });
+    $("download").addEventListener("click", () => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([fileText(guides)], { type: "application/json" }));
+      a.download = game.id + ".json"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+
+    /* ---------- loading ---------- */
+    async function loadGames() {
+      let data;
+      if (GH.user) {
+        try { const f = await GH.getFile("data/games.json"); if (f.text) data = JSON.parse(f.text); } catch {}
+      }
+      data ??= await Hub.gamesData();
+      games = data.games || []; baseTypes = data.guideTypes || [];
+      const keep = $("game").value || store.get("hub-editor-game");
+      $("game").innerHTML = games.map(g => `<option value="${Hub.esc(g.id)}">${Hub.esc(g.name)}</option>`).join("");
+      if (games.some(g => g.id === keep)) $("game").value = keep;
+    }
+
+    async function loadGame() {
+      await loadGames();
+      if (!games.length) { $("list").innerHTML = `<div class="muted" style="padding:10px">Add a game to data/games.json first.</div>`; return; }
+      game = games.find(g => g.id === $("game").value) || games[0];
+      store.set("hub-editor-game", game.id);
+      $("publish-msg").innerHTML = "";
+      try {
+        if (GH.user) {
+          // read straight from GitHub so you always edit the newest version
+          const f = await GH.getFile(guidesPath());
+          base = f.text ? JSON.parse(f.text) : []; baseSha = f.sha;
+        } else {
+          Hub._cache[guidesPath()] = undefined;
+          base = await Hub.guides(game.id); baseSha = null;
+        }
+      } catch (err) {
+        $("publish-msg").innerHTML = `<div class="err">Couldn't load the latest guides: ${Hub.esc(err.message)}</div>`;
+        base = await Hub.guides(game.id);
+      }
+      published = fileText(base);
+      ops = store.get(opsKey()) || [];
+      guides = replay(base, ops);
+      if (ops.length && fileText(guides) !== published) toast("Restored your unsaved changes");
+
+      $("file-path").textContent = guidesPath();
+      $("repo-warn").classList.toggle("hidden", !!REPO);
+      $("gh-link").classList.toggle("hidden", !REPO);
+      if (REPO) $("gh-link").href = `https://github.com/${REPO}/edit/${BRANCH}/${guidesPath()}`;
+      await setupMap();
+      clearForm();
+      sync();
+    }
+    $("game").addEventListener("change", loadGame);
+    window.addEventListener("beforeunload", e => { if (game && diff().length && GH.user) { e.preventDefault(); e.returnValue = ""; } });
+
+    /* ---------- start ---------- */
+    const saved = REPO && store.get(TOKEN_KEY);
+    if (saved) {
+      try { await GH.signIn(saved); }
+      catch (err) { GH.signOut(); if (err.status === 401) { store.del(TOKEN_KEY); toast("Your sign-in expired — please sign in again"); } }
+    }
+    renderAccount();
+    await loadGame();
+  })().catch(err => Hub.showError(document.getElementById("main"), err));
+  </script>
+</body>
+</html>
